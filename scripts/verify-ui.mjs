@@ -1,0 +1,60 @@
+import { chromium } from "playwright-core";
+import path from "node:path";
+
+const base = process.env.BASE_URL || "http://127.0.0.1:3000";
+const resolver = process.env.HOST_RESOLVER_RULES;
+const browser = await chromium.launch({ headless: true, executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", args: resolver ? [`--host-resolver-rules=${resolver}`] : [] });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+const errors = [];
+page.on("console", (message) => {
+  const text = message.text();
+  if (message.type() === "error" && !text.includes("about:srcdoc") && !text.includes("allow-scripts")) errors.push(text);
+});
+page.on("pageerror", (error) => errors.push(error.message));
+
+if (process.env.SESSION_TOKEN) {
+  const url = new URL(base);
+  await page.context().addCookies([{ name: "qmreader_session", value: process.env.SESSION_TOKEN, domain: url.hostname, path: "/", httpOnly: true, secure: url.protocol === "https:", sameSite: "Lax" }]);
+}
+
+await page.goto(base, { waitUntil: "networkidle" });
+console.log("FIRST_SCREEN", (await page.locator("body").innerText()).slice(0, 500));
+const passwordField = page.getByLabel("访问密码");
+if (await passwordField.isVisible().catch(() => false)) {
+  await passwordField.fill(process.env.READER_PASSWORD || "test-reader");
+  await page.getByRole("button", { name: "进入书房" }).click();
+}
+await page.getByRole("button", { name: "上传电子书" }).waitFor();
+if (await page.getByText("书架还是空的").isVisible().catch(() => false)) {
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "上传电子书" }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles(path.resolve("tests/fixtures/sample.epub"));
+  await page.getByRole("link", { name: "开始阅读" }).waitFor({ timeout: 20_000 });
+}
+await page.screenshot({ path: "/tmp/qmreader-design/library-desktop.png", fullPage: true });
+await page.getByRole("link", { name: "开始阅读" }).first().click();
+await page.waitForURL(/\/read\//);
+await page.locator("iframe").first().waitFor({ timeout: 20_000 });
+await page.waitForTimeout(1200);
+await page.screenshot({ path: "/tmp/qmreader-design/reader-desktop.png", fullPage: true });
+const frame = page.frames().find((item) => item !== page.mainFrame());
+if (!frame) throw new Error("EPUB iframe was not created");
+await frame.locator("p").first().selectText();
+await frame.locator("p").first().dispatchEvent("mouseup");
+await page.getByRole("button", { name: "高亮", exact: true }).waitFor();
+await page.getByRole("button", { name: "高亮", exact: true }).click();
+await frame.locator("p").nth(1).selectText();
+await frame.locator("p").nth(1).dispatchEvent("mouseup");
+await page.getByRole("button", { name: "问 AI" }).click();
+await page.waitForFunction(() => {
+  const text = document.querySelector(".ai-content")?.textContent || "";
+  return text.length > 30 && !text.includes("从原文出发") && !text.includes("正在结合原文思考");
+}, undefined, { timeout: 60_000 });
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(400);
+await page.screenshot({ path: "/tmp/qmreader-design/reader-mobile.png", fullPage: true });
+const metrics = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth, title: document.title }));
+console.log(JSON.stringify({ ok: errors.length === 0 && metrics.width <= metrics.viewport, errors, metrics }, null, 2));
+await browser.close();
+if (errors.length || metrics.width > metrics.viewport) process.exit(1);
