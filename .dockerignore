@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+data
+design-previews
+tests
+docs/screenshots
+.env*
+npm-debug.log*
+pnpm-debug.log*
