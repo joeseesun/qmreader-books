@@ -71,7 +71,7 @@ docker compose up -d --build
 curl http://127.0.0.1:3487/api/health
 ```
 
-生产使用 AZW3/MOBI 时，需要在运行镜像或宿主机提供 Calibre `ebook-convert`，并通过 `EBOOK_CONVERT_BIN` 指定路径。当前轻量示例镜像优先保障 EPUB 闭环，未内置 700 MB 级完整 Calibre 依赖。
+生产使用 AZW3/MOBI 时，在宿主机按 [Calibre 官方 Linux 指南](https://calibre-ebook.com/download_linux) 安装独立二进制到 `/opt/calibre`。Compose 会把 `/opt/calibre/calibre` 只读挂载到容器，并通过 `EBOOK_CONVERT_BIN=/opt/calibre/ebook-convert` 调用；镜像只安装必要的无头运行库，避免引入完整 Debian Calibre 图形依赖。
 
 ## 架构与隐私
 
@@ -128,6 +128,6 @@ pnpm dev
 
 The production app uses a server-side password, an OpenAI-compatible streaming endpoint, local file/JSON storage, epub.js, Lucide icons, and a Docker/Nginx deployment. Run `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, and `node scripts/verify-ui.mjs` to verify it.
 
-Main limits: single-user storage, browser-local reading annotations, keyword-based whole-book retrieval, and DRM-free books only. AZW3/MOBI conversion requires Calibre's `ebook-convert` in the runtime.
+Main limits: single-user storage, browser-local reading annotations, keyword-based whole-book retrieval, and DRM-free books only. AZW3/MOBI conversion uses an official Calibre binary mounted read-only from the host.
 
 Live app: [read.qiaomu.ai](https://read.qiaomu.ai) · License: [MIT](LICENSE) · Security: [SECURITY.md](SECURITY.md)

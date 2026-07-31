@@ -5,10 +5,12 @@ services:
     env_file: .env
     environment:
       DATA_DIR: /app/data
+      EBOOK_CONVERT_BIN: /opt/calibre/ebook-convert
     ports:
       - "127.0.0.1:3487:3000"
     volumes:
       - ./data:/app/data
+      - /opt/calibre/calibre:/opt/calibre:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)})"]
       interval: 20s

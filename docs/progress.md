@@ -18,4 +18,4 @@
 - AI：复用服务器现有 OpenAI-compatible DeepSeek 配置，生产流式回答已验证，密钥未进入仓库或浏览器。
 - 公网验收：登录、EPUB 上传、阅读、划线、AI、桌面与移动截图通过；测试书已删除。
 - GitHub：`https://github.com/joeseesun/qmreader-books`，PR #1 已合并，MIT License。
-- 第一版边界：轻量生产镜像未内置完整 Calibre；EPUB 已上线，AZW3/MOBI 需要后续接入独立 `ebook-convert` 运行时。
+- 格式转换：宿主机独立安装官方 Calibre 9.12.0 到 `/opt/calibre/calibre`，只读挂载进容器；生产镜像从零重建后，MOBI、AZW3 → EPUB 的上传、转换、读取和清理均已实际通过（仅支持无 DRM 文件）。
