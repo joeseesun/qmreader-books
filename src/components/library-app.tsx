@@ -1,41 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
   CircleAlert,
   Library,
   Loader2,
-  LockKeyhole,
-  LogOut,
   Trash2,
   Upload,
 } from "lucide-react";
 import type { BookRecord } from "@/lib/types";
 
+const DELETE_TOKENS_KEY = "qmreader-delete-tokens";
+
 export default function LibraryApp() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
-  const [password, setPassword] = useState("");
   const [books, setBooks] = useState<BookRecord[]>([]);
+  const [deleteTokens, setDeleteTokens] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState<BookRecord | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
-    const auth = await fetch("/api/auth").then((r) => r.json());
-    setAuthed(auth.authenticated);
-    if (auth.authenticated) {
+  useEffect(() => {
+    const timer = window.setTimeout(async () => {
       const data = await fetch("/api/books").then((r) => r.json());
       setBooks(data.books || []);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
+      try {
+        setDeleteTokens(JSON.parse(localStorage.getItem(DELETE_TOKENS_KEY) || "{}"));
+      } catch {
+        localStorage.removeItem(DELETE_TOKENS_KEY);
+      }
+    }, 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, []);
 
   useEffect(() => {
     if (!deleting) return;
@@ -45,20 +43,6 @@ export default function LibraryApp() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [deleting]);
-
-  async function login(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setMessage("");
-    const response = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (!response.ok) setMessage("密码不正确，请重新输入。");
-    else await load();
-    setBusy(false);
-  }
 
   async function upload(file?: File) {
     if (!file) return;
@@ -71,6 +55,11 @@ export default function LibraryApp() {
     if (!response.ok) setMessage(data.error || "导入失败，请重试。");
     else {
       setBooks((items) => [data.book, ...items]);
+      if (data.deleteToken) {
+        const nextTokens = { ...deleteTokens, [data.book.id]: data.deleteToken };
+        setDeleteTokens(nextTokens);
+        localStorage.setItem(DELETE_TOKENS_KEY, JSON.stringify(nextTokens));
+      }
       setMessage(
         data.book.status === "ready" ? "电子书已加入书架。" : data.book.error,
       );
@@ -84,57 +73,18 @@ export default function LibraryApp() {
     setBusy(true);
     const response = await fetch(`/api/books/${deleting.id}`, {
       method: "DELETE",
+      headers: { "x-delete-token": deleteTokens[deleting.id] || "" },
     });
-    if (response.ok)
+    if (response.ok) {
       setBooks((items) => items.filter((book) => book.id !== deleting.id));
-    else setMessage("删除失败，请稍后重试。");
+      const nextTokens = { ...deleteTokens };
+      delete nextTokens[deleting.id];
+      setDeleteTokens(nextTokens);
+      localStorage.setItem(DELETE_TOKENS_KEY, JSON.stringify(nextTokens));
+    } else setMessage("删除失败，只有原上传浏览器可以删除这本书。");
     setDeleting(null);
     setBusy(false);
   }
-
-  if (authed === null)
-    return (
-      <main className="center-state">
-        <Loader2 className="spin" aria-hidden="true" />
-        <span>正在打开书房…</span>
-      </main>
-    );
-  if (!authed)
-    return (
-      <main className="login-shell">
-        <section className="login-panel">
-          <div className="brand-mark">
-            <BookOpen aria-hidden="true" />
-          </div>
-          <p className="kicker">QMReader Books</p>
-          <h1>回到你的书房</h1>
-          <p>电子书、划线和对话都只保存在这间私人书房里。</p>
-          <form onSubmit={login}>
-            <label htmlFor="password">访问密码</label>
-            <div className="password-row">
-              <LockKeyhole aria-hidden="true" />
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="输入访问密码…"
-              />
-            </div>
-            {message && (
-              <p className="form-error" role="alert">
-                {message}
-              </p>
-            )}
-            <button className="primary-button" disabled={busy || !password}>
-              {busy ? <Loader2 className="spin" aria-hidden="true" /> : null}
-              进入书房
-            </button>
-          </form>
-        </section>
-      </main>
-    );
 
   return (
     <main className="library-shell">
@@ -148,16 +98,7 @@ export default function LibraryApp() {
             <span>Books</span>
           </div>
         </div>
-        <button
-          className="icon-button"
-          aria-label="退出登录"
-          onClick={async () => {
-            await fetch("/api/auth", { method: "DELETE" });
-            setAuthed(false);
-          }}
-        >
-          <LogOut aria-hidden="true" />
-        </button>
+        <span className="public-library-label">公共书架</span>
       </header>
       <section className={`library-intro ${books.length ? "has-books" : ""}`}>
         <div>
@@ -238,13 +179,15 @@ export default function LibraryApp() {
                   </p>
                 )}
               </div>
-              <button
-                className="icon-button book-delete"
-                aria-label={`删除《${book.title}》`}
-                onClick={() => setDeleting(book)}
-              >
-                <Trash2 aria-hidden="true" />
-              </button>
+              {deleteTokens[book.id] && (
+                <button
+                  className="icon-button book-delete"
+                  aria-label={`删除《${book.title}》`}
+                  onClick={() => setDeleting(book)}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              )}
             </article>
           ))}
         </section>

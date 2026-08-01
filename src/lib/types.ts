@@ -1,9 +1,7 @@
 export type BookRecord = {
   id: string;
   title: string;
-  originalName: string;
   format: "epub" | "azw3" | "mobi";
-  storedName: string;
   size: number;
   createdAt: string;
   status: "ready" | "failed";

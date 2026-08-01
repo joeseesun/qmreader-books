@@ -1,9 +1,6 @@
-import { isAuthenticated } from "@/lib/auth";
-
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!(await isAuthenticated())) return Response.json({ error: "未登录" }, { status: 401 });
   const body = await request.json();
   const prompt = String(body.prompt || "").slice(0, 4000);
   const context = String(body.context || "").slice(0, 50000);

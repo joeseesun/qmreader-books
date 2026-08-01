@@ -24,7 +24,7 @@ QMReader Books 是一个自托管在线电子书阅读器，面向希望真正�
 | 阅读排版 | 字体、字号、行高、页宽及亮色、护眼、深色主题 |
 | 划线与笔记 | 使用 EPUB CFI 保存定位，刷新后仍能回到原文 |
 | 上下文 AI | 支持划线、当前章节、全书检索三种范围和流式回答 |
-| 私人书房 | 服务端密码保护，模型密钥不会进入浏览器 |
+| 公共书架 | 无需注册或密码，打开网页即可上传、阅读和使用 AI |
 
 ## 产品巡游
 
@@ -48,12 +48,11 @@ cp .env.example .env
 pnpm dev
 ```
 
-打开 `http://localhost:3000`。开发环境未设置 `READER_PASSWORD` 时允许本机直接访问；生产环境必须配置密码。
+打开 `http://localhost:3000`，无需注册或密码即可进入书架。
 
 ## 配置
 
 ```dotenv
-READER_PASSWORD=your-long-password
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_API_KEY=server-side-only
 OPENAI_MODEL=gpt-4.1-mini
@@ -88,14 +87,14 @@ curl http://127.0.0.1:3487/api/health
 pnpm lint
 pnpm exec tsc --noEmit
 pnpm build
-BASE_URL=http://localhost:3000 READER_PASSWORD=test-reader node scripts/verify-ui.mjs
+BASE_URL=http://localhost:3000 node scripts/verify-ui.mjs
 ```
 
-浏览器脚本会验证登录、上传测试 EPUB、打开阅读、文本划线、选区 AI 请求、桌面与移动端无横向溢出，并保存真实截图。
+浏览器脚本会验证公共访问、上传测试 EPUB、打开阅读、文本划线、选区 AI 请求、桌面与移动端无横向溢出，并保存真实截图。
 
 ## 限制
 
-- 第一版是单用户、单机 VPS 产品，不是多租户云服务。
+- 第一版是公共共享书架；任何访客都可以上传和阅读，删除凭证只保存在原上传浏览器。请勿上传敏感或无权分享的内容。
 - 阅读进度、排版和划线当前保存在浏览器本地；更换浏览器不会自动同步。
 - 全书模式使用客户端章节索引与关键词检索，不是向量数据库。
 - DRM 电子书不会被解密或转换。
@@ -126,8 +125,8 @@ cp .env.example .env
 pnpm dev
 ```
 
-The production app uses a server-side password, an OpenAI-compatible streaming endpoint, local file/JSON storage, epub.js, Lucide icons, and a Docker/Nginx deployment. Run `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, and `node scripts/verify-ui.mjs` to verify it.
+The production app is publicly accessible without registration, with an OpenAI-compatible streaming endpoint, local file/JSON storage, epub.js, Lucide icons, and a Docker/Nginx deployment. Run `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, and `node scripts/verify-ui.mjs` to verify it.
 
-Main limits: single-user storage, browser-local reading annotations, keyword-based whole-book retrieval, and DRM-free books only. AZW3/MOBI conversion uses an official Calibre binary mounted read-only from the host.
+Main limits: a shared public bookshelf, browser-local reading annotations, keyword-based whole-book retrieval, and DRM-free books only. Any visitor can upload; only the original browser receives the local deletion token. AZW3/MOBI conversion uses an official Calibre binary mounted read-only from the host.
 
 Live app: [read.qiaomu.ai](https://read.qiaomu.ai) · License: [MIT](LICENSE) · Security: [SECURITY.md](SECURITY.md)

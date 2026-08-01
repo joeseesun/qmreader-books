@@ -169,76 +169,6 @@ svg {
   font-size: 12px;
   font-weight: 600;
 }
-.login-shell {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background:
-    radial-gradient(
-      circle at 75% 15%,
-      rgba(29, 106, 90, 0.08),
-      transparent 30%
-    ),
-    var(--paper);
-}
-.login-panel {
-  width: min(420px, 100%);
-  padding: 42px;
-  background: rgba(255, 253, 248, 0.86);
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  box-shadow: 0 28px 80px rgba(64, 51, 31, 0.1);
-}
-.login-panel h1 {
-  font-family: "Songti SC", "STSong", serif;
-  font-size: 38px;
-  line-height: 1.2;
-  margin: 20px 0 10px;
-  font-weight: 600;
-}
-.login-panel > p:not(.kicker) {
-  color: var(--muted);
-  line-height: 1.7;
-}
-.login-panel form {
-  display: grid;
-  gap: 10px;
-  margin-top: 30px;
-}
-.login-panel label {
-  font-size: 13px;
-  font-weight: 600;
-}
-.password-row {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 14px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-}
-.password-row:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.password-row svg {
-  color: var(--muted);
-}
-.password-row input {
-  border: 0;
-  outline: 0;
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-}
-.form-error {
-  color: var(--danger);
-  font-size: 13px;
-  margin: 0;
-}
 .library-shell {
   min-height: 100dvh;
   padding: 0 max(24px, 5vw) 64px;
@@ -249,6 +179,15 @@ svg {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(228, 222, 210, 0.7);
+}
+.public-library-label {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 253, 248, 0.68);
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 .brand {
   display: flex;
@@ -962,9 +901,6 @@ svg {
   }
   .book-grid {
     grid-template-columns: 1fr;
-  }
-  .login-panel {
-    padding: 30px 24px;
   }
   .reader-shell,
   .reader-shell.left-closed,
