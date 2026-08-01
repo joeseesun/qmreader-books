@@ -12,26 +12,14 @@ page.on("console", (message) => {
 });
 page.on("pageerror", (error) => errors.push(error.message));
 
-if (process.env.SESSION_TOKEN) {
-  const url = new URL(base);
-  await page.context().addCookies([{ name: "qmreader_session", value: process.env.SESSION_TOKEN, domain: url.hostname, path: "/", httpOnly: true, secure: url.protocol === "https:", sameSite: "Lax" }]);
-}
-
 await page.goto(base, { waitUntil: "networkidle" });
 console.log("FIRST_SCREEN", (await page.locator("body").innerText()).slice(0, 500));
-const passwordField = page.getByLabel("访问密码");
-if (await passwordField.isVisible().catch(() => false)) {
-  await passwordField.fill(process.env.READER_PASSWORD || "test-reader");
-  await page.getByRole("button", { name: "进入书房" }).click();
-}
 await page.getByRole("button", { name: "上传电子书" }).waitFor();
-if (await page.getByText("书架还是空的").isVisible().catch(() => false)) {
-  const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "上传电子书" }).click();
-  const chooser = await chooserPromise;
-  await chooser.setFiles(path.resolve("tests/fixtures/sample.epub"));
-  await page.getByRole("link", { name: "开始阅读" }).waitFor({ timeout: 20_000 });
-}
+const chooserPromise = page.waitForEvent("filechooser");
+await page.getByRole("button", { name: "上传电子书" }).click();
+const chooser = await chooserPromise;
+await chooser.setFiles(path.resolve("tests/fixtures/sample.epub"));
+await page.getByRole("button", { name: "删除《sample》" }).waitFor({ timeout: 20_000 });
 await page.screenshot({ path: "/tmp/qmreader-design/library-desktop.png", fullPage: true });
 await page.getByRole("link", { name: "开始阅读" }).first().click();
 await page.waitForURL(/\/read\//);
@@ -55,6 +43,12 @@ await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(400);
 await page.screenshot({ path: "/tmp/qmreader-design/reader-mobile.png", fullPage: true });
 const metrics = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth, title: document.title }));
+await page.goto(base, { waitUntil: "networkidle" });
+const deleteButton = page.getByRole("button", { name: "删除《sample》" });
+await deleteButton.click();
+await page.getByRole("button", { name: "确认删除" }).click();
+await deleteButton.waitFor({ state: "detached" });
+console.log("OWNER_DELETE_OK");
 console.log(JSON.stringify({ ok: errors.length === 0 && metrics.width <= metrics.viewport, errors, metrics }, null, 2));
 await browser.close();
 if (errors.length || metrics.width > metrics.viewport) process.exit(1);

@@ -4,22 +4,31 @@ import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
 import { execFile } from "node:child_process";
 import { NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
-import { bookDir, readLibrary, writeLibrary } from "@/lib/storage";
+import { bookDir, readLibrary, writeLibrary, type StoredBookRecord } from "@/lib/storage";
 import type { BookRecord } from "@/lib/types";
 
 const execFileAsync = promisify(execFile);
 const allowed = new Set(["epub", "azw3", "mobi"]);
 
+function publicBook(book: StoredBookRecord): BookRecord {
+  return {
+    id: book.id,
+    title: book.title,
+    format: book.format,
+    size: book.size,
+    createdAt: book.createdAt,
+    status: book.status,
+    error: book.error,
+  };
+}
+
 export const runtime = "nodejs";
 
 export async function GET() {
-  if (!(await isAuthenticated())) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  return NextResponse.json({ books: await readLibrary() });
+  return NextResponse.json({ books: (await readLibrary()).map(publicBook) });
 }
 
 export async function POST(request: Request) {
-  if (!(await isAuthenticated())) return NextResponse.json({ error: "未登录" }, { status: 401 });
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "请选择电子书" }, { status: 400 });
@@ -28,6 +37,7 @@ export async function POST(request: Request) {
   if (file.size > 100 * 1024 * 1024) return NextResponse.json({ error: "文件不能超过 100 MB" }, { status: 413 });
 
   const id = crypto.randomUUID();
+  const deleteToken = crypto.randomBytes(24).toString("base64url");
   const dir = bookDir(id);
   await fs.mkdir(dir, { recursive: true });
   const original = path.join(dir, `original.${ext}`);
@@ -46,7 +56,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const record: BookRecord = {
+  const record: StoredBookRecord = {
     id,
     title: file.name.replace(/\.(epub|azw3|mobi)$/i, ""),
     originalName: file.name,
@@ -56,8 +66,9 @@ export async function POST(request: Request) {
     createdAt: new Date().toISOString(),
     status,
     error,
+    deleteTokenHash: crypto.createHash("sha256").update(deleteToken).digest("hex"),
   };
   const books = await readLibrary();
   await writeLibrary([record, ...books]);
-  return NextResponse.json({ book: record }, { status: 201 });
+  return NextResponse.json({ book: publicBook(record), deleteToken }, { status: 201 });
 }
